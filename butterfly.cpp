@@ -21,7 +21,6 @@ using namespace std;
 #define N 10
 int My_rank, Comm_sz;
 
-
 // -----------------------------------------------------------------
 // prints a prefix
 void printpre() {
@@ -48,7 +47,7 @@ void cleanup (const char *message) {
 // -----------------------------------------------------------------
 // my version of the all reduce
 void butterfly_reduce(double vector[], double result[], int count, string datatype, string operation, string comm, bool lth) {
-  int i, condition, talk;
+  int i, condition, stage, talk;
   double addtoresult[N];
 
   if (datatype.compare("MPI_DOUBLE") != 0) { cleanup("Error:  Only supports Double"); }
@@ -59,51 +58,62 @@ void butterfly_reduce(double vector[], double result[], int count, string dataty
     result[i] = vector[i];
   }
 
+  stage =0;
   if (lth == true) {                                    /* if the ordering is low to high       */
     condition = 1;
-    while (condition < Comm_sz ) {
+    while (condition < Comm_sz ) {                      /* determines the communication pattern */
+      stage++;
       talk = condition ^ My_rank;
-      if (talk < My_rank) {
-        printpre();
-        cout << "Process " << My_rank << ":  stage " << condition << ", sending to " << talk << endl;
+      if (talk < My_rank) {                             /* half the processes send first        */
+        if (verbose == true) {                          /* prints details if verbose is true    */
+          printpre();
+          cout << "Process " << My_rank << ":  stage " << stage << ", sending to " << talk << endl;
+        }
         MPI_Send(&result[0], count, MPI_DOUBLE, talk, 0, MPI_COMM_WORLD);
         MPI_Recv(&addtoresult[0], count, MPI_DOUBLE, talk, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        for (i = 0; i < N; i++) {
+        for (i = 0; i < N; i++) {                       /* performs the vector sum              */
           result[i] += addtoresult[i];
         }
       }
-      else {
-        printpre();
-        cout << "Process " << My_rank << ":  stage " << condition << ", recieving from " << talk << endl;
+      else {                                            /* half the processes recieve first     */
+        if (verbose == true) {                          /* verbose output                       */
+          printpre();
+          cout << "Process " << My_rank << ":  stage " << stage << ", recieving from " << talk << endl;
+        }
         MPI_Recv(&addtoresult[0], count, MPI_DOUBLE, talk, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         MPI_Send(&result[0], count, MPI_DOUBLE, talk, 0, MPI_COMM_WORLD);
-        for (i = 0; i < N; i++) {
+        for (i = 0; i < N; i++) {                       /* performs the vector sum              */
           result[i] += addtoresult[i];
         }
       }
       condition <<= 1;
     }
   }
-  else {
+  else {                                                /* if the ordering is high to low       */
     condition = Comm_sz;
-    while (condition > 1) {                             /* if the ordering is high to low       */
+    while (condition > 1) {                             /* determines the communication pattern */
+      stage++;
       condition >>= 1;
       talk = condition ^ My_rank;
-      if (My_rank < talk) {
-        printpre();
-        cout << "Process " << My_rank << ":  stage " << condition << ", sending to " << talk << endl;
+      if (My_rank < talk) {                             /* half the processes send first        */
+        if (verbose == true) {                          /* prints details if verbose is true    */
+          printpre();
+          cout << "Process " << My_rank << ":  stage " << stage << ", sending to " << talk << endl;
+        }
         MPI_Send(&result[0], count, MPI_DOUBLE, talk, 0, MPI_COMM_WORLD);
         MPI_Recv(&addtoresult[0], count, MPI_DOUBLE, talk, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        for (i = 0; i < N; i++) {
+        for (i = 0; i < N; i++) {                       /* performs the vector sum              */
           result[i] += addtoresult[i];
         }
       }
-      else {
-        printpre();
-        cout << "Process " << My_rank << ":  stage " << condition << ", recieving from " << talk << endl;
+      else {                                            /* half the process recieve first       */
+        if (verbose == true) {                          /* verbose output                       */
+          printpre();
+          cout << "Process " << My_rank << ":  stage " << stage << ", recieving from " << talk << endl;
+        }
         MPI_Recv(&addtoresult[0], count, MPI_DOUBLE, talk, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         MPI_Send(&result[0], count, MPI_DOUBLE, talk, 0, MPI_COMM_WORLD);
-        for (i = 0; i < N; i++) {
+        for (i = 0; i < N; i++) {                       /* performs the vector sum              */
           result[i] += addtoresult[i];
         }
       }
@@ -143,13 +153,13 @@ int main(int argc, char *argv[]) {
   if (argc < 2) {                                       /* too few arguments aborts the program */
     cleanup("Error:  Too few arguments");
   }
-  else if (argc == 2) {                                      /* option to run with a b n as inputs   */
+  else if (argc == 2) {                                 /* option to run with a b n as inputs   */
     order = argv[1];
     if (order.compare("lowtohigh") == 0) {lth = true;}
     else if (order.compare("hightolow") == 0) {lth = false;}
     else {cleanup("Error:  incorrect argument for order");}
   }
-  else if (argc == 3) {                                      /* option to run -verbose               */
+  else if (argc == 3) {                                 /* option to run -verbose               */
     flag = argv[1];
     order = argv[2];
 
@@ -161,7 +171,7 @@ int main(int argc, char *argv[]) {
     else if (order.compare("hightolow") == 0) {lth = false;}
     else {cleanup("Error:  incorrect argument for order");}
   }
-  else {                                       /* too many arguments aborts the program  */
+  else {                                                /* too many arguments aborts the program  */
     cleanup("Error:  Too many arguments");
   }
 
@@ -170,14 +180,14 @@ int main(int argc, char *argv[]) {
         "You have not executed the program with a number of process that is a power of two");
   }
 
-  for (i = 0; i < N; i++) {
+  for (i = 0; i < N; i++) {                             /* initializes vectors                    */
     vector[i] = i*0.001;
     result[i] = 0;
   }
 
   butterfly_reduce(vector, result, N, datatype, operation, comm, lth);
 
-  if (My_rank==0) {
+  if (My_rank==0) {                                     /* prints out answer                      */
     printpre();
     cout << "The answer is [";
       for (i = 0; i < N-1; i++) {
@@ -186,5 +196,5 @@ int main(int argc, char *argv[]) {
     cout << result[N-1] << "]\n";
   }
 
-  cleanup("Program Complete");                 /* terminates the program               */
+  cleanup("Program Complete");                          /* terminates the program                 */
 }
