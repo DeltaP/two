@@ -86,9 +86,10 @@ void butterfly_reduce(double vector[], double result[], int count, string dataty
   }
   else {
     condition = Comm_sz;
-    while (condition < 1) {                             /* if the ordering is high to low       */
+    while (condition > 1) {                             /* if the ordering is high to low       */
+      condition >>= 1;
       talk = condition ^ My_rank;
-      if (talk < My_rank) {
+      if (My_rank < talk) {
         printpre();
         cout << "Process " << My_rank << ":  stage " << condition << ", sending to " << talk << endl;
         MPI_Send(&result[0], count, MPI_DOUBLE, talk, 0, MPI_COMM_WORLD);
@@ -106,7 +107,6 @@ void butterfly_reduce(double vector[], double result[], int count, string dataty
           result[i] += addtoresult[i];
         }
       }
-      condition >>= 1;
     }
   }
 }
