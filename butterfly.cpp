@@ -46,7 +46,7 @@ void cleanup (const char *message) {
 
 // -----------------------------------------------------------------
 // my version of the all reduce
-void butterfly_reduce(double vector[], double result[], int count, string datatype, string operation, string comm, bool lth) {
+void butterfly_reduce(double vector[], double result[], int count, string datatype, string operation, string comm, bool lth, bool verbose) {
   int i, condition, stage, talk;
   double addtoresult[N];
 
@@ -137,8 +137,8 @@ int isPowerOfTwo (int x)
 // -----------------------------------------------------------------
 // the main program
 int main(int argc, char *argv[]) {
-  double vector[N], result[N];
-  int i;
+  double vector[N], result[N], start, finish, local_elapsed, elapsed;
+  int i, run;
   bool verbose = false;
   bool lth;
   string datatype = "MPI_DOUBLE";
@@ -180,20 +180,64 @@ int main(int argc, char *argv[]) {
         "You have not executed the program with a number of process that is a power of two");
   }
 
-  for (i = 0; i < N; i++) {                             /* initializes vectors                    */
-    vector[i] = i*0.001;
-    result[i] = 0;
+  //my implementation
+  if (My_rank == 0) {
+    printpre();
+    cout << "My implementation of the butterfly reduce" << endl;
+  }
+  for (run = 0; run < 10; run++) {                      /* runs several loops to get timings      */
+    for (i = 0; i < N; i++) {                           /* initializes vectors                    */
+      vector[i] = i*0.001;
+      result[i] = 0;
+    }
+
+    MPI_Barrier(MPI_COMM_WORLD);                        /* performs timing of my function         */
+    start = MPI_Wtime();
+    butterfly_reduce(vector, result, N, datatype, operation, comm, lth, verbose);
+    finish = MPI_Wtime();
+    local_elapsed = finish - start;
+    MPI_Reduce(&local_elapsed, &elapsed, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+
+    if (My_rank==0) {                                   /* prints out answer                      */
+      printpre();
+      printf("MY_ELAPSED %d %e\n", run, elapsed);
+      printpre();
+      cout << "The answer is [";
+        for (i = 0; i < N-1; i++) {
+          cout << result[i] << ", ";
+        }
+      cout << result[N-1] << "]\n";
+    }
   }
 
-  butterfly_reduce(vector, result, N, datatype, operation, comm, lth);
-
-  if (My_rank==0) {                                     /* prints out answer                      */
+  //MPI implementation
+  if (My_rank == 0) {
     printpre();
-    cout << "The answer is [";
-      for (i = 0; i < N-1; i++) {
-        cout << result[i] << ", ";
-      }
-    cout << result[N-1] << "]\n";
+    cout << "MPI implementation of the butterfly reduce" << endl;
+  }
+  for (run = 0; run < 10; run++) {                      /* runs several loops to get timings      */
+    for (i = 0; i < N; i++) {                           /* initializes vectors                    */
+      vector[i] = i*0.001;
+      result[i] = 0;
+    }
+
+    MPI_Barrier(MPI_COMM_WORLD);                        /* performs timing of MPI function        */
+    start = MPI_Wtime();
+    MPI_Allreduce(vector, result, N, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    finish = MPI_Wtime();
+    local_elapsed = finish - start;
+    MPI_Reduce(&local_elapsed, &elapsed, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+
+    if (My_rank==0) {                                   /* prints out answer                      */
+      printpre();
+      printf("MPI_ELAPSED %d %e\n", run, elapsed);
+      printpre();
+      cout << "The answer is [";
+        for (i = 0; i < N-1; i++) {
+          cout << result[i] << ", ";
+        }
+      cout << result[N-1] << "]\n";
+    }
   }
 
   cleanup("Program Complete");                          /* terminates the program                 */
