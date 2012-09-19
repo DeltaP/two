@@ -101,12 +101,16 @@ Figure \ref{fig:nodecomm} shows node to node diagrams for communicating a MPI Al
 \pagebreak
 \section{Timings on Gordon}
 
-I ran 10 timings for each test to allow for warm-ups and get reasonable statistics.  As the attached timing tables show, not not many warm-ups were needed for most of the tests.  To keep the statistics constant, I removed the same number of warm-ups for a given test.  For the latency test I removed two warm-ups and for the throughput test I removed five warm-ups.  For the throughput test the 8 byte low to high test took an abnormally long time to equilibrate, which caused me to make an across the board cut in statistics for this test.  While the timing tables show that the MPI Allreduce consistently required the shortest number of warm-ups this is somewhat deceptive because the MPI calls were always run after the my calls.
+I ran 10 timings for each test to allow for warm-ups and to get reasonable statistics.  As the attached timing tables show, not not many warm-ups were needed for most of the tests.  To keep the statistics fixed, I removed the same number of warm-ups for a given test.  For the latency test I removed two warm-ups and for the throughput test I removed five warm-ups.  For the throughput test the 8 byte low to high test took an abnormally long time to equilibrate, which caused me to make an across the board cut in statistics for this test.  While the timing tables show that the MPI Allreduce consistently required the shortest number of warm-ups this is somewhat deceptive because the MPI calls were always run after the my calls.
+
+One especially interesting feature of figure \ref{fig:latency} that the time to complete the algorithm behaves roughly like a power law as a function of number of processors.  There are of course two scaling regimes:  one node and many nodes.  In each of these regimes, you can fit the slope of the lines produced to get the power.  It appears that these powers are very close and may even be approximately the same.  The really exciting thing is that this plot shows exactly how many processors there are per node.  The huge jump between 16 core and 32 cores reflects the added latency of going off a single node and using the infiniband.  In an ideal world the scaling is $log(n)$ where $n$ is the number of cores.  My data looks like it may be logarithmic, however I would need more data points to be sure of the exact behavior.
+
+The relationship between the size of the message and time to complete the operation on a fixed node also appears to be power law for my implementation with messages larger than one kilobyte.  The MPI implementation has behavior that I can not pin down exactly based on the limited data that I have.
 
 \begin{figure}[htpb]
   \centering
   \includegraphics[width=4in]{Figures/Throughput.png}
-  \caption{Throughput bound analysis, note the log-log scale.}
+  \caption{Throughput bound analysis with 128 cores, note the log-log scale.}
   \label{fig:throughput}
 \end{figure}
 
