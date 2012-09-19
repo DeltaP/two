@@ -75,10 +75,10 @@ void butterfly_reduce(double vector[], double result[], int count, string dataty
           result[i] += addtoresult[i];
         }
       }
-      else {                                            /* half the processes recieve first     */
+      else {                                            /* half the processes receive first     */
         if (verbose == true) {                          /* verbose output                       */
           printpre();
-          cout << "Process " << My_rank << ":  stage " << stage << ", recieving from " << talk << endl;
+          cout << "Process " << My_rank << ":  stage " << stage << ", receiving from " << talk << endl;
         }
         MPI_Recv(&addtoresult[0], count, MPI_DOUBLE, talk, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         MPI_Send(&result[0], count, MPI_DOUBLE, talk, 0, MPI_COMM_WORLD);
@@ -106,10 +106,10 @@ void butterfly_reduce(double vector[], double result[], int count, string dataty
           result[i] += addtoresult[i];
         }
       }
-      else {                                            /* half the process recieve first       */
+      else {                                            /* half the process receive first       */
         if (verbose == true) {                          /* verbose output                       */
           printpre();
-          cout << "Process " << My_rank << ":  stage " << stage << ", recieving from " << talk << endl;
+          cout << "Process " << My_rank << ":  stage " << stage << ", receiving from " << talk << endl;
         }
         MPI_Recv(&addtoresult[0], count, MPI_DOUBLE, talk, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         MPI_Send(&result[0], count, MPI_DOUBLE, talk, 0, MPI_COMM_WORLD);
@@ -210,6 +210,15 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  if ((verbose == true) && (My_rank != 0)) {            /* for verbose print result on all cores  */
+    printpre();
+    cout << "The answer is [";
+      for (i = 0; i < N-1; i++) {
+        cout << result[i] << ", ";
+      }
+    cout << result[N-1] << "]\n";
+  }
+
   //MPI implementation
   if (My_rank == 0) {
     printpre();
@@ -228,7 +237,7 @@ int main(int argc, char *argv[]) {
     local_elapsed = finish - start;
     MPI_Reduce(&local_elapsed, &elapsed, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 
-    if (My_rank==0) {                                   /* prints out answer                      */
+    if (My_rank == 0) {                                 /* prints out answer                      */
       printpre();
       printf("MPI_ELAPSED %d %e\n", run, elapsed);
       printpre();
@@ -239,6 +248,5 @@ int main(int argc, char *argv[]) {
       cout << result[N-1] << "]\n";
     }
   }
-
   cleanup("Program Complete");                          /* terminates the program                 */
 }

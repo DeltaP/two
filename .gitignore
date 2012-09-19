@@ -1,4 +1,8 @@
 butterfly
+timing_tables.numbers
+
+Out/*
+Figures/*
 
 *.dSYM
 *.aux
